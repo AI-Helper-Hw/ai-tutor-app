@@ -3,6 +3,7 @@
 // ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, updateDoc, increment, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // YOUR KEYS
 const firebaseConfig = {
@@ -17,10 +18,11 @@ const firebaseConfig = {
 // Initialize
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app); // Database Connection
 const provider = new GoogleAuthProvider();
 
 // ==========================================
-// 2. DOM ELEMENTS & VARIABLES
+// 2. DOM ELEMENTS
 // ==========================================
 const chatHistory = document.getElementById('chat-history');
 const form = document.getElementById('chat-form');
@@ -38,7 +40,7 @@ const sidebar = document.getElementById('sidebar');
 const menuBtn = document.getElementById('menu-btn');
 const overlay = document.getElementById('overlay');
 
-// NEW: Login & Profile
+// Login & Profile
 const loginModal = document.getElementById('loginModal');
 const googleLoginBtn = document.getElementById('google-login-btn');
 const closeLoginBtn = document.getElementById('close-login-btn');
@@ -54,21 +56,49 @@ let currentUser = null;
 let sessions = [];
 let currentSessionId = null;
 let freeChatCount = parseInt(localStorage.getItem('freeChatCount') || '0');
-const MAX_FREE_CHATS = 10;
+const MAX_FREE_CHATS = 10; 
 
 // ==========================================
-// 3. AUTHENTICATION & LIMIT LOGIC
+// 3. AUTHENTICATION & DATABASE TRACKING
 // ==========================================
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     if (user) {
         // --- LOGGED IN ---
-        console.log("Logged in as:", user.displayName);
+        console.log("User:", user.displayName);
         
-        // --- PROFILE PICTURE FIX (UI-Avatars Fallback) ---
-        // If Google doesn't send a picture, this generates one with initials (e.g., "R")
+        // 1. SAVE/UPDATE USER STATS IN DATABASE
+        const userRef = doc(db, "users", user.uid);
+        
+        try {
+            const docSnap = await getDoc(userRef);
+            
+            if (!docSnap.exists()) {
+                // First time user! Create Profile.
+                await setDoc(userRef, {
+                    name: user.displayName,
+                    email: user.email,
+                    photo: user.photoURL,
+                    accountCreated: serverTimestamp(),
+                    lastLogin: serverTimestamp(),
+                    loginCount: 1,
+                    totalChats: 0,
+                    status: "active"
+                });
+            } else {
+                // Returning user! Update Stats.
+                await updateDoc(userRef, {
+                    lastLogin: serverTimestamp(),
+                    loginCount: increment(1),
+                    photo: user.photoURL // Update photo if changed
+                });
+            }
+        } catch (e) {
+            console.error("DB Error:", e);
+        }
+
+        // 2. UI Updates (Avatar Fallback)
         const photoUrl = user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName)}&background=random&color=fff&bold=true`;
-        
         userAvatar.src = photoUrl;
         userNameDisplay.textContent = user.displayName;
         
@@ -76,7 +106,6 @@ onAuthStateChanged(auth, (user) => {
         loginSidebarBtn.style.display = 'none';
         logoutBtn.style.display = 'flex';
         
-        // Hide Modal & Update Plan
         loginModal.style.display = 'none';
         chatCounterDisplay.textContent = "Plan: Unlimited ♾️";
         
@@ -88,16 +117,16 @@ onAuthStateChanged(auth, (user) => {
         
         updateChatCounterUI();
         
-        // Gatekeeper Logic (Pop up login if needed)
+        // Limit Check
         if (freeChatCount >= MAX_FREE_CHATS) {
-           showLoginModal(true); // Force Stay Open
+           showLoginModal(true); 
         } else if (freeChatCount === 0) {
-           showLoginModal(false); // First visit popup
+           showLoginModal(false); 
         }
     }
 });
 
-// Login Actions
+// Login Button
 googleLoginBtn.addEventListener('click', async () => {
     try { await signInWithPopup(auth, provider); } 
     catch (e) { alert("Login failed: " + e.message); }
@@ -124,19 +153,35 @@ function updateChatCounterUI() {
 }
 
 // ==========================================
-// 4. MAIN APP LOGIC (Chat, Sessions, UI)
+// 4. MAIN APP LOGIC
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (typeof marked === 'undefined') console.warn('Marked.js library not loaded!');
-    if (typeof renderMathInElement === 'undefined') console.warn('KaTeX library not loaded!');
-
     loadSessions();
     if (sessions.length === 0) createNewSession();
     else loadChat(sessions[0].id);
     updateChatCounterUI();
     
-    // Sidebar Toggles
+    // --- NEW: ENTER KEY TO SEND ---
+    userInput.addEventListener('keydown', (e) => {
+        // If Enter is pressed WITHOUT Shift
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault(); // Don't add a new line
+            if (!submitBtn.disabled) {
+                // Manually fire the submit event
+                form.dispatchEvent(new Event('submit'));
+            }
+        }
+    });
+
+    // Auto-resize textarea
+    userInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+        if(this.value === '') this.style.height = 'auto';
+    });
+
+    // Close menus when clicking outside
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.menu-btn') && !e.target.closest('.dropdown-menu')) {
             document.querySelectorAll('.dropdown-menu').forEach(el => el.classList.remove('show'));
@@ -145,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Event Listeners for UI
+// Sidebar & UI Events
 if(menuBtn) menuBtn.addEventListener('click', toggleSidebar);
 if(overlay) overlay.addEventListener('click', toggleSidebar);
 
@@ -166,12 +211,6 @@ if(clearAllBtn) {
     });
 }
 
-userInput.addEventListener('input', function() {
-    this.style.height = 'auto';
-    this.style.height = (this.scrollHeight) + 'px';
-    if(this.value === '') this.style.height = 'auto';
-});
-
 imageInput.addEventListener('change', function() {
     if (this.files.length > 0) {
         uploadLabel.style.color = '#ef4444';
@@ -182,13 +221,13 @@ imageInput.addEventListener('change', function() {
     }
 });
 
-// --- SUBMIT LOGIC (With Limit Check) ---
+// --- SUBMIT LOGIC ---
 form.addEventListener('submit', async function(e) {
     e.preventDefault();
 
-    // 1. GATEKEEPER CHECK
+    // 1. GATEKEEPER
     if (!currentUser && freeChatCount >= MAX_FREE_CHATS) {
-        showLoginModal(true); // Force login
+        showLoginModal(true);
         return;
     }
 
@@ -196,10 +235,20 @@ form.addEventListener('submit', async function(e) {
     const imageFile = imageInput.files[0];
     if (!question && !imageFile) return;
 
-    // 2. INCREMENT COUNTER
+    // 2. TRACKING & COUNTERS
     if (!currentUser) {
+        // Guest: Track in LocalStorage
         freeChatCount++;
         updateChatCounterUI();
+    } else {
+        // User: Track in Database
+        try {
+            const userRef = doc(db, "users", currentUser.uid);
+            updateDoc(userRef, {
+                totalChats: increment(1),
+                lastActive: serverTimestamp()
+            });
+        } catch(err) { console.error("Tracking Error", err); }
     }
 
     // Auto-Rename Session
@@ -229,7 +278,7 @@ form.addEventListener('submit', async function(e) {
     formData.append('question', question);
     if (imageFile) formData.append('image', imageFile);
     
-    // Send History
+    // History
     const conversationHistory = currentSession.messages.slice(0, -1).map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',
         text: msg.text
@@ -258,7 +307,7 @@ form.addEventListener('submit', async function(e) {
 });
 
 // ==========================================
-// 5. HELPER FUNCTIONS (Session & UI)
+// 5. HELPER FUNCTIONS
 // ==========================================
 
 function loadSessions() {
@@ -313,7 +362,6 @@ function saveMessage(msg) {
     }
 }
 
-// Global functions attached to window for HTML access
 window.renameSession = function(id) {
     const session = sessions.find(s => s.id === id);
     if (!session) return;
@@ -436,14 +484,12 @@ function resetFileInput() {
 
 const feedbackBtn = document.getElementById('feedback-btn');
 const feedbackModal = document.getElementById('feedbackModal');
-const feedbackCloseButtons = document.querySelectorAll('.close-modal'); // Targets specific close btn (if class added) or general
+const feedbackCloseButtons = document.querySelectorAll('.close-modal'); 
 const feedbackForm = document.getElementById('feedbackForm');
 const feedbackStatus = document.getElementById('feedback-status');
 
-
 if (feedbackBtn) feedbackBtn.addEventListener('click', () => feedbackModal.style.display = 'block');
 
-// General close handler (looks for the specific modal's close btn)
 feedbackCloseButtons.forEach(btn => {
     btn.addEventListener('click', function() {
         if(this.closest('#feedbackModal')) {
@@ -454,7 +500,6 @@ feedbackCloseButtons.forEach(btn => {
     });
 });
 
-// Close modal when clicking outside (Handles both modals)
 window.addEventListener('click', (e) => {
     if (e.target === feedbackModal) {
         feedbackModal.style.display = 'none';
