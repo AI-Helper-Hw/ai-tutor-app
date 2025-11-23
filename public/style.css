@@ -499,3 +499,47 @@ textarea { flex: 1; background: transparent; border: none; resize: none; max-hei
     font-size: 0.75rem;
     color: #9ca3af;
 }
+
+/* ========================================= */
+/* === CRITICAL MOBILE FIXES (Added at bottom) === */
+/* ========================================= */
+
+/* Force strict height management on mobile */
+@media (max-width: 768px) {
+    body, .app-container {
+        /* Lock height to viewport to prevent scroll bounce */
+        height: 100dvh !important; 
+        overflow: hidden !important;
+        position: fixed;
+        width: 100%;
+    }
+
+    .main-content {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Force header to stay at top */
+    .app-header {
+        flex: 0 0 auto; /* Don't shrink, don't grow */
+    }
+
+    /* Force input to stay at bottom */
+    .input-container {
+        flex: 0 0 auto; /* Don't shrink, don't grow */
+        padding-bottom: env(safe-area-inset-bottom); /* For iPhone X+ home bar */
+    }
+
+    /* Force chat area to take remaining space and SCROLL */
+    #chat-history {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* Smooth momentum scrolling */
+    }
+    
+    /* Prevent Zoom on Input Focus (iPhone) */
+    textarea, input {
+        font-size: 16px !important;
+    }
+}
