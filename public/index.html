@@ -36,13 +36,13 @@
             </div>
             
             <div class="sidebar-footer">
-                <!-- NEW: User Profile Section (Hidden until logged in) -->
+                <!-- User Profile Section (Hidden until logged in) -->
                 <div id="user-profile" class="user-profile" style="display: none;">
                     <img id="user-avatar" src="" alt="Profile">
                     <span id="user-name-display">User</span>
                 </div>
 
-                <!-- NEW: Login/Logout Buttons -->
+                <!-- Login/Logout Buttons -->
                 <button id="login-sidebar-btn" class="footer-link">
                     <i class="fas fa-sign-in-alt"></i> Login
                 </button>
@@ -50,7 +50,7 @@
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
 
-                <!-- ORIGINAL Buttons -->
+                <!-- Original Buttons -->
                 <button id="feedback-btn" class="footer-link">
                     <i class="fas fa-comment-dots"></i> Send Feedback
                 </button>
@@ -74,7 +74,7 @@
                     </div>
                 </div>
                 
-                <!-- NEW: Free Chat Counter -->
+                <!-- Free Chat Counter -->
                 <div class="header-right">
                     <span id="chat-counter" class="chat-counter">Free Chats: 10</span>
                 </div>
@@ -108,10 +108,10 @@
         <div id="overlay" class="overlay"></div>
     </div>
 
-    <!-- ORIGINAL: Feedback Modal -->
+    <!-- EXISTING: Feedback Modal -->
     <div id="feedbackModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal">&times;</span>
+            <span class="close-modal feedback-close">&times;</span>
             <h2>📬 Send Feedback</h2>
             <p>Help us improve! Share your thoughts, report issues, or request features.</p>
             
@@ -140,7 +140,7 @@
         </div>
     </div>
 
-    <!-- NEW: Login Popup Modal -->
+    <!-- EXISTING: Login Popup Modal -->
     <div id="loginModal" class="modal login-modal">
         <div class="modal-content login-content">
             <!-- The 'X' Button (Will be hidden when limit reached) -->
@@ -165,10 +165,26 @@
         </div>
     </div>
 
+    <!-- 👇👇👇 BUY ME A COFFEE WIDGET CODE 👇👇👇 -->
+    <!-- REPLACE "YOUR_USERNAME_HERE" WITH YOUR ACTUAL USERNAME -->
+    <script 
+        data-name="BMC-Widget" 
+        data-cfasync="false" 
+        src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" 
+        data-id="develope_apps" 
+        data-description="Support me on Buy me a coffee!" 
+        data-message="Find this helpful? Buy me a coffee! ☕" 
+        data-color="#FFDD00" 
+        data-position="Right" 
+        data-x_margin="18" 
+        data-y_margin="18">
+    </script>
+    <!-- 👆👆👆 END OF WIDGET CODE 👆👆👆 -->
+
     <!-- EmailJS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     
-    <!-- MAIN SCRIPT (Must be type="module" for Firebase) -->
+    <!-- MAIN SCRIPT -->
     <script type="module" src="script.js"></script>
 </body>
 </html>
